@@ -3,11 +3,14 @@
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
 import 'dart:convert';
+import 'package:audioplayers/audioplayers.dart';
 import 'dart:typed_data';
 // import 'db_helper.dart';
 import 'package:animated_splash_screen/animated_splash_screen.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:pointycastle/paddings/pkcs7.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:hive/hive.dart';
@@ -119,6 +122,7 @@ class _CaneYardScreenState extends State<CaneYardScreen> {
   final TextEditingController _nfcControllerBlock18 = TextEditingController();
   final TextEditingController _nfcControllerBlock20 = TextEditingController();
   String? selectedTrash;
+  bool isBSMChecked = false;
   bool _isScanning = false;
   bool isWriting = false;
   final Uint8List aesKey = Uint8List.fromList(utf8.encode("1234567890ABCDEF"));
@@ -156,7 +160,10 @@ class _CaneYardScreenState extends State<CaneYardScreen> {
     return Uint8List.fromList(encrypted.bytes);
   }
 
-  Future<void> _writeNFCData({required String trash}) async {
+  Future<void> _writeNFCData({
+    required String trash,
+    required bool bsm,
+  }) async {
     _isScanning = false;
 
     final Map<String, String> requiredFields = {
@@ -183,10 +190,14 @@ class _CaneYardScreenState extends State<CaneYardScreen> {
 
     Uint8List block33 = _encryptAES("1");
     Uint8List block34 = _encryptAES(trash);
+    Uint8List block36 = _encryptAES("$bsm");
 
     await FlutterNfcKit.authenticateSector(8, keyA: authKey);
     await FlutterNfcKit.writeBlock(33, block33);
     await FlutterNfcKit.writeBlock(34, block34);
+
+    await FlutterNfcKit.authenticateSector(9, keyA: authKey);
+    await FlutterNfcKit.writeBlock(36, block36);
 
     await FlutterNfcKit.finish();
 
@@ -202,6 +213,7 @@ class _CaneYardScreenState extends State<CaneYardScreen> {
       _nfcControllerBlock20.clear();
       _nfcControllerBlock24.clear();
       selectedTrash = null;
+      isBSMChecked = false;
     });
 
     _isScanning = true;
@@ -289,6 +301,9 @@ class _CaneYardScreenState extends State<CaneYardScreen> {
           await FlutterNfcKit.authenticateSector(8, keyA: authKey);
           Uint8List block34 = await FlutterNfcKit.readBlock(34);
 
+          await FlutterNfcKit.authenticateSector(9, keyA: authKey);
+          Uint8List block36 = await FlutterNfcKit.readBlock(36);
+
           String kodeKebun = _decryptAES(block4);
           String noTiket = _decryptAES(block6);
           String plat = _decryptAES(block9);
@@ -296,6 +311,7 @@ class _CaneYardScreenState extends State<CaneYardScreen> {
           String jenisTebang = _decryptAES(block18);
           String jenisTebangan = _decryptAES(block20);
           String trash = _decryptAES(block34);
+          String bsm = _decryptAES(block36);
           String jenisTebu = "";
 
           if (['1', '2', '3', '4'].contains(kodeKebun[2])) {
@@ -312,7 +328,16 @@ class _CaneYardScreenState extends State<CaneYardScreen> {
             _nfcControllerBlock10.text = supir.trim();
             _nfcControllerBlock18.text = jenisTebang.trim();
             _nfcControllerBlock20.text = jenisTebangan.trim();
-            selectedTrash = trash;
+            // if(trash != null || trash != ''){
+            if (trash != '') {
+              selectedTrash = trash;
+            }
+            // }
+            if (bsm == 'true') {
+              isBSMChecked = true;
+            } else {
+              isBSMChecked = false;
+            }
           });
         } else {
           setState(() {
@@ -435,6 +460,15 @@ class _CaneYardScreenState extends State<CaneYardScreen> {
                 });
               },
             ),
+            CheckboxListTile(
+              title: Text('BSM'),
+              value: isBSMChecked,
+              onChanged: (bool? value) {
+                setState(() {
+                  isBSMChecked = value ?? false;
+                });
+              },
+            ),
             const SizedBox(height: 16),
             Align(
               alignment: Alignment.center,
@@ -457,7 +491,8 @@ class _CaneYardScreenState extends State<CaneYardScreen> {
                   );
 
                   try {
-                    await _writeNFCData(trash: selectedTrash ?? '');
+                    await _writeNFCData(
+                        trash: selectedTrash ?? '', bsm: isBSMChecked);
 
                     Navigator.of(context).pop();
 
@@ -690,6 +725,8 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
   final TextEditingController _nfcControllerBlock25 = TextEditingController();
   final TextEditingController _nfcControllerBlock26 = TextEditingController();
   final TextEditingController _nfcControllerBlock29 = TextEditingController();
+  final AudioPlayer _player = AudioPlayer();
+  final FlutterTts _tts = FlutterTts();
   Map<String, String> platDropdownMap = {};
   Map<String, String> supirDropdownMap = {};
   Map<String, String> operatorDropdownMap = {};
@@ -772,6 +809,13 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
       }
     }
   }
+
+  Future<void> speak(String text) async {
+  await _tts.setLanguage('id-ID');
+  await _tts.setSpeechRate(0.5);
+  await _tts.setPitch(1.0);
+  await _tts.speak(text);
+}
 
   Uint8List _pkcs7Pad(Uint8List data, int blockSize) {
     final padder = PKCS7Padding();
@@ -1130,7 +1174,7 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
           // print("Block 32: $block32");
           String jenisTruk = _decryptAES(block8);
           String plat = _decryptAES(block9);
-          debugPrint("plat: $plat");
+          debugPrint("block 9: $plat");
           String supir = _decryptAES(block10);
           String alat = _decryptAES(block12);
           String operator = _decryptAES(block13);
@@ -1224,10 +1268,10 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
             for (var e in listKebun) {
               final map = Map<String, dynamic>.from(e);
               final value = map['KODEKEBUN'] ?? '';
-              final label = "${map['KODEKEBUN']} - ${map['NOPETAK']} - ${map['LUASHA']} HA";
+              final label =
+                  "${map['KODEKEBUN']} - ${map['NOPETAK']} - ${map['LUASHA']} HA";
               kebunDropdownMap[value] = label;
             }
-
 
             // // Untuk platDropdownMap
             final listPG = box.get('kendar_pg') as List<dynamic>? ?? [];
@@ -1341,6 +1385,10 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
     }
   }
 
+  Future<void> playSound(String fileName) async {
+    await _player.play(AssetSource('sfx/$fileName'));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1370,7 +1418,8 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
               enabled: !isReadOnly,
               asyncItems: (String filter) async {
                 final list =
-                    Hive.box('localData').get('data_kebun') as List<dynamic>? ?? [];
+                    Hive.box('localData').get('data_kebun') as List<dynamic>? ??
+                        [];
                 return list.map((e) {
                   final map = Map<String, dynamic>.from(e);
                   final kode = map['KODEKEBUN'] ?? '';
@@ -1491,7 +1540,11 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
               ),
               onChanged: (value) {
                 if (value != null && value.contains(' - ')) {
-                  _nfcControllerBlock9.text = value.split(' - ').last.trim();
+                  if (selectedJenis == 'PG') {
+                    _nfcControllerBlock9.text = value.split(' - ').last.trim();
+                  } else if (selectedJenis == 'Kontraktor') {
+                    _nfcControllerBlock9.text = value.split(' - ').first.trim();
+                  }
                 } else {
                   _nfcControllerBlock9.text = '';
                 }
@@ -1971,6 +2024,8 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
                         operatorSt: _nfcControllerBlock25.text);
                     Navigator.of(context).pop();
 
+                    // await playSound('Berhasil.mp3');
+                    await speak("Sip Berhasil");
                     showDialog(
                       context: context,
                       builder: (_) => AlertDialog(
@@ -1987,11 +2042,30 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
                   } catch (e) {
                     Navigator.of(context).pop();
 
+                    String errorMessage;
+
+                    if (e is PlatformException) {
+                      if (e.code == '408') {
+                        // await playSound('Error.mp3');
+                        errorMessage =
+                            "Timeout saat menulis ke NFC. Silahkan coba lagi";
+                      } else if (e.code == '500') {
+                        await playSound('Gagal.mp3');
+                        errorMessage =
+                            "Kesalahan saat tap kartu. Silahkan coba lagi";
+                      } else {
+                        errorMessage = "PlatformException: ${e.message}";
+                      }
+                    } else {
+                      errorMessage = "Terjadi kesalahan: $e";
+                    }
+                    await speak("Wadoh silahkan coba lagi");
+
                     showDialog(
                       context: context,
                       builder: (_) => AlertDialog(
                         title: const Text("Gagal"),
-                        content: Text("Gagal menulis data ke NFC: $e"),
+                        content: Text(errorMessage),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.of(context).pop(),
