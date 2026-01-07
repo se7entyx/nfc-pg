@@ -704,6 +704,8 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
       TextEditingController(); //spt
   final TextEditingController _dateController =
       TextEditingController(); //tanggal jam bakar
+      final TextEditingController _dateController2 =
+      TextEditingController(); //tanggal jam tebang
   final TextEditingController _nfcControllerBlock6 =
       TextEditingController(); //no tiket
   // final TextEditingController _nfcControllerBlock8 = TextEditingController(); //jenis truk
@@ -725,6 +727,7 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
   final TextEditingController _nfcControllerBlock25 = TextEditingController();
   final TextEditingController _nfcControllerBlock26 = TextEditingController();
   final TextEditingController _nfcControllerBlock29 = TextEditingController();
+  final TextEditingController _nfcControllerBlock37 = TextEditingController();
   final AudioPlayer _player = AudioPlayer();
   final FlutterTts _tts = FlutterTts();
   Map<String, String> platDropdownMap = {};
@@ -810,6 +813,36 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
     }
   }
 
+  Future<void> _pickDateTime2() async {
+    DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+
+    if (pickedDate != null) {
+      TimeOfDay? pickedTime = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.now(),
+      );
+
+      if (pickedTime != null) {
+        DateTime finalDateTime = DateTime(
+          pickedDate.year,
+          pickedDate.month,
+          pickedDate.day,
+          pickedTime.hour,
+          pickedTime.minute,
+        );
+
+        setState(() {
+          _dateController2.text = finalDateTime.toString();
+        });
+      }
+    }
+  }
+
   Future<void> speak(String text) async {
   await _tts.setLanguage('id-ID');
   await _tts.setSpeechRate(0.5);
@@ -859,12 +892,14 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
     required String jenisTebang,
     required String jenisTebangan,
     required String tglJamBakar,
+    required String tglJamTebang,
     required String jenisTebu,
     required String operatorSt,
     required String pot,
     required bool up,
     required bool umbal,
     required String barak,
+    required String alatSt,
   }) async {
     debugPrint(plat);
     debugPrint(supir);
@@ -884,6 +919,9 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
       'Jenis Tebangan': jenisTebangan,
       'Potongan Tunggul': pot,
       'Tinggal di Barak': barak,
+      'Kepala Kerja': kepalaKerja,
+      'Huyula': huyula,
+      'Jumlah Tenaga Kerja': jumlahTenagaKerja,
     };
 
     for (var entry in requiredFields.entries) {
@@ -893,7 +931,7 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
     }
 
     NFCTag tag = await FlutterNfcKit.poll(
-      timeout: const Duration(seconds: 10),
+      timeout: const Duration(seconds: 5),
       androidPlatformSound: true,
     );
 
@@ -908,6 +946,11 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
     String tanggal = tglJamSplit.isNotEmpty ? tglJamSplit[0] : '';
     String jamFull = tglJamSplit.length > 1 ? tglJamSplit[1] : '';
     String jam = jamFull.isNotEmpty ? jamFull.substring(0, 5) : '';
+
+    List<String> tglJamSplit2 = tglJamTebang.split(" ");
+    String tanggal2 = tglJamSplit2.isNotEmpty ? tglJamSplit2[0] : '';
+    String jamFull2 = tglJamSplit2.length > 1 ? tglJamSplit2[1] : '';
+    String jam2 = jamFull2.isNotEmpty ? jamFull2.substring(0, 5) : '';
 
     // String logo = '';
     // String nipsupir = '';
@@ -992,53 +1035,62 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
     Uint8List block28 = _encryptAES("$umbal");
     Uint8List block29 = _encryptAES("$up");
     Uint8List block30 = _encryptAES(barak);
+    Uint8List block37 = _encryptAES(alatSt);
+    Uint8List block38 = _encryptAES(tanggal2);
+    Uint8List block40 = _encryptAES(jam2);
 
     await FlutterNfcKit.authenticateSector(1, keyA: authKey);
     await FlutterNfcKit.writeBlock(4, block4);
     await FlutterNfcKit.writeBlock(5, block5);
     await FlutterNfcKit.writeBlock(6, block6);
-    Future.delayed(const Duration(seconds: 2));
+    // Future.delayed(const Duration(seconds: 2));
 
     await FlutterNfcKit.authenticateSector(2, keyA: authKey);
     await FlutterNfcKit.writeBlock(8, block8);
     await FlutterNfcKit.writeBlock(9, block9);
     await FlutterNfcKit.writeBlock(10, block10);
-    Future.delayed(const Duration(seconds: 2));
+    // Future.delayed(const Duration(seconds: 2));
 
     await FlutterNfcKit.authenticateSector(3, keyA: authKey);
     await FlutterNfcKit.writeBlock(12, block12);
     await FlutterNfcKit.writeBlock(13, block13);
     await FlutterNfcKit.writeBlock(14, block14);
-    Future.delayed(const Duration(seconds: 2));
+    // Future.delayed(const Duration(seconds: 2));
 
     await FlutterNfcKit.authenticateSector(4, keyA: authKey);
     await FlutterNfcKit.writeBlock(16, block16);
     await FlutterNfcKit.writeBlock(17, block17);
     await FlutterNfcKit.writeBlock(18, block18);
-    Future.delayed(const Duration(seconds: 2));
+    // Future.delayed(const Duration(seconds: 2));
 
     await FlutterNfcKit.authenticateSector(5, keyA: authKey);
     await FlutterNfcKit.writeBlock(20, block20);
     await FlutterNfcKit.writeBlock(21, block21);
     await FlutterNfcKit.writeBlock(22, block22);
-    Future.delayed(const Duration(seconds: 2));
+    // Future.delayed(const Duration(seconds: 2));
 
     await FlutterNfcKit.authenticateSector(6, keyA: authKey);
     await FlutterNfcKit.writeBlock(24, block24);
     await FlutterNfcKit.writeBlock(25, block25);
     await FlutterNfcKit.writeBlock(26, block26);
-    Future.delayed(const Duration(seconds: 2));
+    // Future.delayed(const Duration(seconds: 2));
 
     await FlutterNfcKit.authenticateSector(7, keyA: authKey);
     await FlutterNfcKit.writeBlock(28, block28);
     await FlutterNfcKit.writeBlock(29, block29);
     await FlutterNfcKit.writeBlock(30, block30);
 
-    await FlutterNfcKit.finish();
+    await FlutterNfcKit.authenticateSector(9, keyA: authKey);
+    await FlutterNfcKit.writeBlock(37, block37);
+    await FlutterNfcKit.writeBlock(38, block38);
+
+    await FlutterNfcKit.authenticateSector(10, keyA: authKey);
+    await FlutterNfcKit.writeBlock(40, block40);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Data berhasil dienkripsi dan ditulis ke NFC!')),
     );
+
     setState(() {
       _nfcControllerBlock4.clear();
       _nfcControllerBlock5.clear();
@@ -1052,7 +1104,9 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
       _nfcControllerBlock17.clear();
       _nfcControllerBlock24.clear();
       _nfcControllerBlock25.clear();
+      _nfcControllerBlock37.clear();
       _dateController.clear();
+      _dateController2.clear();
       selectedJenis = null;
       // selectedTruk = null;
       // selectedSupir = null;
@@ -1066,8 +1120,11 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
       // _nfcControllerBlock29.clear();
     });
 
+    await Future.delayed(Duration(seconds: 2));
+    await FlutterNfcKit.finish();
+
     _isScanning = true;
-    await Future.delayed(Duration(seconds: 5));
+    // await Future.delayed(Duration(seconds: 5));
     _startNFCContinuousListener();
   }
 
@@ -1077,7 +1134,7 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
       if (!isWriting) {
         await _startNFCListener();
       } else {
-        await Future.delayed(Duration(seconds: 3));
+        await Future.delayed(Duration(seconds: 3)); 
         return;
       }
     }
@@ -1171,6 +1228,9 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
           Uint8List block29 = await FlutterNfcKit.readBlock(29);
           Uint8List block30 = await FlutterNfcKit.readBlock(30);
 
+          await FlutterNfcKit.authenticateSector(9, keyA: authKey);
+          Uint8List block37 = await FlutterNfcKit.readBlock(37);
+
           // print("Block 32: $block32");
           String jenisTruk = _decryptAES(block8);
           String plat = _decryptAES(block9);
@@ -1190,6 +1250,7 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
           String up = _decryptAES(block29);
           String umbal = _decryptAES(block28);
           String barak = _decryptAES(block30);
+          String alatSt = _decryptAES(block37);
           debugPrint(barak);
           String jenisTebu = "";
 
@@ -1235,6 +1296,7 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
             _nfcControllerBlock14.text = kepalaKerja.trim();
             _nfcControllerBlock16.text = huyula.trim();
             _nfcControllerBlock17.text = jumlahTenagaKerja.trim();
+            _nfcControllerBlock37.text = alatSt.trim();
             if (jenisTebang != "") {
               selectedJenisTebang = jenisTebang;
             }
@@ -1268,8 +1330,7 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
             for (var e in listKebun) {
               final map = Map<String, dynamic>.from(e);
               final value = map['KODEKEBUN'] ?? '';
-              final label =
-                  "${map['KODEKEBUN']} - ${map['NOPETAK']} - ${map['LUASHA']} HA";
+              final label = "${map['KODEKEBUN']} - ${map['NOPETAK']} - ${map['LUASHA']} HA - ${map['LOKASI']}";
               kebunDropdownMap[value] = label;
             }
 
@@ -1425,7 +1486,8 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
                   final kode = map['KODEKEBUN'] ?? '';
                   final petak = map['NOPETAK'] ?? '';
                   final luas = map['LUASHA'] ?? '';
-                  return "$kode - $petak - $luas HA";
+                  final lokasi = map['LOKASI'] ?? '';
+                  return "$kode - $petak - $luas HA - $lokasi";
                 }).toList();
               },
               selectedItem: kebunDropdownMap[_nfcControllerBlock4.text],
@@ -1660,7 +1722,15 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
               ),
             ),
             const SizedBox(height: 16),
-
+            TextField(
+              controller: _nfcControllerBlock37,
+              readOnly: isReadOnly,
+              decoration: const InputDecoration(
+                labelText: 'Alat ST',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
             DropdownSearch<String>(
               enabled: !isReadOnly,
               asyncItems: (String filter) async {
@@ -1853,6 +1923,11 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
                         : (newValue) {
                             setState(() {
                               selectedJenisTebangan = newValue;
+                              if (newValue == 'Bakar') {
+                                _dateController2.clear();
+                              } else if (newValue == 'Hijau') {
+                                _dateController.clear();
+                              }
                             });
                           },
                   ),
@@ -1870,6 +1945,21 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.calendar_today),
                     onPressed: isReadOnly ? null : _pickDateTime,
+                  ),
+                ),
+                readOnly: true,
+              ),
+              const SizedBox(height: 16),
+            ],
+            if (selectedJenisTebangan == 'Hijau') ...[
+              TextField(
+                controller: _dateController2,
+                decoration: InputDecoration(
+                  labelText: 'Tanggal & Jam Tebang',
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.calendar_today),
+                    onPressed: isReadOnly ? null : _pickDateTime2,
                   ),
                 ),
                 readOnly: true,
@@ -1984,6 +2074,7 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
                     print('plat: ${_nfcControllerBlock9.text}');
                     print('supir: ${_nfcControllerBlock10.text}');
                     print('alat: ${_nfcControllerBlock12.text}');
+                    print('alat ST: ${_nfcControllerBlock37.text}');
                     print('operator: ${_nfcControllerBlock13.text}');
                     print('kepalaKerja: ${_nfcControllerBlock14.text}');
                     print('huyula: ${_nfcControllerBlock16.text}');
@@ -1999,18 +2090,18 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
                     print('operatorSt: ${_nfcControllerBlock25.text}');
                     print('==========================================');
                     await _writeNFCData(
-                        kodeKebun: _nfcControllerBlock4.text,
-                        spt: _nfcControllerBlock5.text,
-                        noTiket: _nfcControllerBlock6.text,
+                        kodeKebun: _nfcControllerBlock4.text ?? '',
+                        spt: _nfcControllerBlock5.text ?? '',
+                        noTiket: _nfcControllerBlock6.text ?? '',
                         jenisTruk: selectedJenis ?? '',
-                        plat: _nfcControllerBlock9.text,
-                        supir: _nfcControllerBlock10.text,
-                        alat: _nfcControllerBlock12.text,
-                        operator: _nfcControllerBlock13.text,
-                        kepalaKerja: _nfcControllerBlock14.text,
-                        huyula: _nfcControllerBlock16.text,
-                        jumlahTenagaKerja: _nfcControllerBlock17.text,
-                        jenisTebu: _nfcControllerBlock24.text,
+                        plat: _nfcControllerBlock9.text ?? '',
+                        supir: _nfcControllerBlock10.text ?? '',
+                        alat: _nfcControllerBlock12.text ?? '',
+                        operator: _nfcControllerBlock13.text ?? '',
+                        kepalaKerja: _nfcControllerBlock14.text ?? '',
+                        huyula: _nfcControllerBlock16.text ?? '',
+                        jumlahTenagaKerja: _nfcControllerBlock17.text ?? '',
+                        jenisTebu: _nfcControllerBlock24.text ?? '',
                         jenisTebang: selectedJenisTebang ?? '',
                         jenisTebangan: selectedJenisTebangan ?? '',
                         pot: selectedTunggul ?? '',
@@ -2021,7 +2112,11 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
                         tglJamBakar: _dateController.text.isNotEmpty
                             ? _dateController.text
                             : '',
-                        operatorSt: _nfcControllerBlock25.text);
+                        tglJamTebang: _dateController2.text.isNotEmpty
+                            ? _dateController2.text
+                            : '',
+                        operatorSt: _nfcControllerBlock25.text,
+                        alatSt: _nfcControllerBlock37.text);
                     Navigator.of(context).pop();
 
                     // await playSound('Berhasil.mp3');
@@ -2059,7 +2154,7 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
                     } else {
                       errorMessage = "Terjadi kesalahan: $e";
                     }
-                    await speak("Wadoh silahkan coba lagi");
+                    await speak("Gagal silahkan coba lagi");
 
                     showDialog(
                       context: context,
