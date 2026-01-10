@@ -723,6 +723,8 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
       TextEditingController(); //huyula
   final TextEditingController _nfcControllerBlock17 =
       TextEditingController(); //jumlah tenaga kerja
+  final TextEditingController _nfcControllerBlock41 =
+      TextEditingController(); //kepala kerja muat saja
   final TextEditingController _nfcControllerBlock24 = TextEditingController();
   final TextEditingController _nfcControllerBlock25 = TextEditingController();
   final TextEditingController _nfcControllerBlock26 = TextEditingController();
@@ -735,6 +737,7 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
   Map<String, String> operatorDropdownMap = {};
   Map<String, String> operatorStDropdownMap = {};
   Map<String, String> mandorDropdownMap = {};
+  Map<String, String> mandorMuatDropdownMap = {};
   Map<String, String> huyulaDropdownMap = {};
   Map<String, String> kebunDropdownMap = {};
 
@@ -900,6 +903,7 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
     required bool umbal,
     required String barak,
     required String alatSt,
+    required String kepalaKerjaMuat,
   }) async {
     debugPrint(plat);
     debugPrint(supir);
@@ -1038,6 +1042,7 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
     Uint8List block37 = _encryptAES(alatSt);
     Uint8List block38 = _encryptAES(tanggal2);
     Uint8List block40 = _encryptAES(jam2);
+    Uint8List block41 = _encryptAES(kepalaKerjaMuat);
 
     await FlutterNfcKit.authenticateSector(1, keyA: authKey);
     await FlutterNfcKit.writeBlock(4, block4);
@@ -1086,6 +1091,7 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
 
     await FlutterNfcKit.authenticateSector(10, keyA: authKey);
     await FlutterNfcKit.writeBlock(40, block40);
+    await FlutterNfcKit.writeBlock(41, block41);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Data berhasil dienkripsi dan ditulis ke NFC!')),
@@ -1105,6 +1111,7 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
       _nfcControllerBlock24.clear();
       _nfcControllerBlock25.clear();
       _nfcControllerBlock37.clear();
+      _nfcControllerBlock41.clear();
       _dateController.clear();
       _dateController2.clear();
       selectedJenis = null;
@@ -1230,6 +1237,11 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
 
           await FlutterNfcKit.authenticateSector(9, keyA: authKey);
           Uint8List block37 = await FlutterNfcKit.readBlock(37);
+          Uint8List block38 = await FlutterNfcKit.readBlock(38);
+
+          await FlutterNfcKit.authenticateSector(10, keyA: authKey);
+          Uint8List block40 = await FlutterNfcKit.readBlock(40);
+          Uint8List block41 = await FlutterNfcKit.readBlock(41);
 
           // print("Block 32: $block32");
           String jenisTruk = _decryptAES(block8);
@@ -1251,6 +1263,9 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
           String umbal = _decryptAES(block28);
           String barak = _decryptAES(block30);
           String alatSt = _decryptAES(block37);
+          String tanggal2 = _decryptAES(block38);
+          String jam2 = _decryptAES(block40);
+          String kepalaKerjaMuat = _decryptAES(block41);
           debugPrint(barak);
           String jenisTebu = "";
 
@@ -1280,6 +1295,7 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
           // }
 
           String tanggalJam = "${tanggal} ${jam}";
+          String tanggalJam2 = "${tanggal2} ${jam2}";
 
           setState(() {
             _nfcControllerBlock4.text = kodeKebun.trim();
@@ -1294,6 +1310,7 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
             _nfcControllerBlock12.text = alat.trim();
             _nfcControllerBlock13.text = operator.trim();
             _nfcControllerBlock14.text = kepalaKerja.trim();
+            _nfcControllerBlock41.text = kepalaKerjaMuat.trim();
             _nfcControllerBlock16.text = huyula.trim();
             _nfcControllerBlock17.text = jumlahTenagaKerja.trim();
             _nfcControllerBlock37.text = alatSt.trim();
@@ -1318,6 +1335,7 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
               selectedBarak = barak;
             }
             _dateController.text = tanggalJam.trim();
+            _dateController2.text = tanggalJam2.trim();
             _nfcControllerBlock25.text = operatorSt.trim();
             if (pot != "") {
               selectedTunggul = pot;
@@ -1373,6 +1391,15 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
               final value = map['KODEHUYULA'] ?? '';
               final label = "${map['KODEHUYULA']} - ${map['NAMAHUYULA']}";
               huyulaDropdownMap[value] = label;
+            }
+
+            final listMandorMuat = box.get('mandor') as List<dynamic>? ?? [];
+            mandorMuatDropdownMap.clear();
+            for (var e in listMandorMuat) {
+              final map = Map<String, dynamic>.from(e);
+              final value = map['KODEMAN'] ?? '';
+              final label = "${map['KODEMAN']} - ${map['NAMAMAN']}";
+              mandorMuatDropdownMap[value] = label;
             }
 
             final listUser = box.get('user') as List<dynamic>? ?? [];
@@ -1862,6 +1889,63 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
             ),
 
             const SizedBox(height: 16),
+            DropdownSearch<String>(
+              enabled: !isReadOnly,
+              asyncItems: (String filter) async {
+                final list =
+                    Hive.box('localData').get('mandor') as List<dynamic>? ?? [];
+
+                List<String> items = list.map((e) {
+                  final map = Map<String, dynamic>.from(e);
+                  final value = map['KODEMAN'] ?? '';
+                  final label = "${map['KODEMAN']} - ${map['NAMAMAN']}";
+                  mandorMuatDropdownMap[value] = label;
+                  return label;
+                }).toList();
+
+                return items;
+              },
+              selectedItem: mandorMuatDropdownMap[_nfcControllerBlock41.text],
+              dropdownDecoratorProps: const DropDownDecoratorProps(
+                dropdownSearchDecoration: InputDecoration(
+                  labelText: 'Kepala Kerja Muat Saja (Kode Mandor)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              onChanged: (value) {
+                if (value != null && value.contains(' - ')) {
+                  _nfcControllerBlock41.text = value.split(' - ').first.trim();
+                } else {
+                  _nfcControllerBlock41.text = value ?? '';
+                }
+                setState(() {});
+              },
+              dropdownBuilder: (context, selectedItem) {
+                return Row(
+                  children: [
+                    Expanded(child: Text(selectedItem ?? "")),
+                    if ((selectedItem ?? '').isNotEmpty)
+                      IconButton(
+                        icon: Icon(Icons.clear),
+                        onPressed: () {
+                          _nfcControllerBlock41.text = '';
+                          setState(() {});
+                        },
+                      ),
+                  ],
+                );
+              },
+              popupProps: const PopupProps.menu(
+                showSearchBox: true,
+                searchFieldProps: TextFieldProps(
+                  decoration: InputDecoration(
+                    labelText: 'Cari Kepala Kerja',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
             TextField(
               controller: _nfcControllerBlock17,
               readOnly: isReadOnly,
@@ -2078,6 +2162,7 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
                     print('operator: ${_nfcControllerBlock13.text}');
                     print('kepalaKerja: ${_nfcControllerBlock14.text}');
                     print('huyula: ${_nfcControllerBlock16.text}');
+                    print('kepalaKerjaMuat: ${_nfcControllerBlock41.text}');
                     print('jumlahTenagaKerja: ${_nfcControllerBlock17.text}');
                     print('jenisTebu: ${_nfcControllerBlock24.text}');
                     print('jenisTebang: $selectedJenisTebang');
@@ -2100,6 +2185,7 @@ class _NFCOperationScreenState extends State<NFCOperationScreen> {
                         operator: _nfcControllerBlock13.text ?? '',
                         kepalaKerja: _nfcControllerBlock14.text ?? '',
                         huyula: _nfcControllerBlock16.text ?? '',
+                        kepalaKerjaMuat: _nfcControllerBlock41.text ?? '',
                         jumlahTenagaKerja: _nfcControllerBlock17.text ?? '',
                         jenisTebu: _nfcControllerBlock24.text ?? '',
                         jenisTebang: selectedJenisTebang ?? '',
